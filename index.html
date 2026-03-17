@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>健身課表規劃師</title>
+  <style>
+    :root {
+      --primary: #e85d04;
+      --primary-dark: #c24a00;
+      --bg: #0f0f0f;
+      --surface: #1a1a1a;
+      --surface2: #242424;
+      --surface3: #2e2e2e;
+      --border: #3a3a3a;
+      --text: #f0f0f0;
+      --text-muted: #888;
+      --green: #22c55e;
+      --blue: #3b82f6;
+      --yellow: #eab308;
+      --red: #ef4444;
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #1a0a00 0%, #0f0f0f 60%);
+      border-bottom: 1px solid var(--border);
+      padding: 24px 24px 20px;
+      text-align: center;
+    }
+    header h1 { font-size: clamp(1.5rem, 4vw, 2.2rem); font-weight: 800; letter-spacing: -0.5px; }
+    header h1 span { color: var(--primary); }
+    header p { color: var(--text-muted); margin-top: 6px; font-size: 0.92rem; }
+
+    /* ── Layout ── */
+    .container { max-width: 900px; margin: 0 auto; padding: 28px 20px 60px; }
+
+    /* ── Step indicator ── */
+    .steps {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+    }
+    .step-dot {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+    .step-dot .num {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: var(--surface2);
+      border: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 0.8rem;
+      transition: all .3s;
+    }
+    .step-dot.active .num { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .step-dot.done .num   { background: var(--green);   border-color: var(--green);   color: #fff; }
+    .step-dot .line { width: 32px; height: 2px; background: var(--border); border-radius: 2px; }
+    .step-dot.done .line { background: var(--green); }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      margin-bottom: 24px;
+    }
+    .card-title {
+      font-size: 1.1rem; font-weight: 700;
+      margin-bottom: 20px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .card-title .icon {
+      width: 34px; height: 34px;
+      background: rgba(232,93,4,.18);
+      border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+    }
+
+    /* ── Form elements ── */
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap: 18px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    label { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; letter-spacing: .3px; }
+    input[type=number], select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      padding: 10px 14px;
+      font-size: 0.95rem;
+      width: 100%;
+      transition: border-color .2s;
+      -webkit-appearance: none;
+    }
+    input[type=number]:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    select option { background: var(--surface2); }
+
+    /* Toggle buttons */
+    .toggle-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    .toggle-btn {
+      padding: 8px 16px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all .2s;
+      font-weight: 600;
+    }
+    .toggle-btn:hover { border-color: var(--primary); color: var(--text); }
+    .toggle-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+    /* PR table */
+    .pr-table { width: 100%; border-collapse: collapse; }
+    .pr-table th {
+      text-align: left; font-size: 0.78rem;
+      color: var(--text-muted); font-weight: 700;
+      text-transform: uppercase; letter-spacing: .5px;
+      padding: 8px 12px; border-bottom: 1px solid var(--border);
+    }
+    .pr-table td { padding: 10px 12px; border-bottom: 1px solid var(--surface3); vertical-align: middle; }
+    .pr-table tr:last-child td { border-bottom: none; }
+    .pr-table td:first-child { font-size: 0.9rem; font-weight: 600; }
+
+    .pr-row { display: flex; align-items: center; gap: 8px; }
+    .pr-row input[type=number] { width: 90px; }
+    .unit-badge {
+      font-size: 0.78rem; color: var(--text-muted);
+      background: var(--surface3); padding: 4px 8px;
+      border-radius: 6px; white-space: nowrap;
+    }
+    .note-badge {
+      font-size: 0.75rem; color: var(--yellow);
+      background: rgba(234,179,8,.12); padding: 3px 8px;
+      border-radius: 6px; margin-top: 4px; display: inline-block;
+    }
+
+    /* Generate button */
+    .btn-primary {
+      width: 100%;
+      padding: 16px;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 1.05rem;
+      font-weight: 800;
+      cursor: pointer;
+      letter-spacing: .3px;
+      transition: background .2s, transform .1s;
+      margin-top: 8px;
+    }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-primary:active { transform: scale(.98); }
+
+    /* ── Result area ── */
+    #result { display: none; }
+    #result.visible { display: block; }
+
+    /* Plan type tabs */
+    .plan-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+    .plan-tab {
+      padding: 9px 20px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      cursor: pointer;
+      transition: all .2s;
+      font-weight: 700;
+    }
+    .plan-tab:hover { border-color: var(--primary); color: var(--text); }
+    .plan-tab.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+    .plan-content { display: none; }
+    .plan-content.active { display: block; }
+
+    /* Week section */
+    .week-section { margin-bottom: 28px; }
+    .week-title {
+      font-size: 0.95rem; font-weight: 800;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 14px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .week-title::after { content:''; flex:1; height:1px; background: var(--border); }
+
+    /* Day card */
+    .day-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 14px;
+      overflow: hidden;
+    }
+    .day-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 18px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .day-header:hover { background: var(--surface3); }
+    .day-badge {
+      min-width: 38px; height: 38px;
+      border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 0.85rem;
+    }
+    .day-badge.train { background: rgba(232,93,4,.22); color: var(--primary); }
+    .day-badge.rest  { background: rgba(59,130,246,.15); color: var(--blue); }
+    .day-title { flex: 1; }
+    .day-title strong { font-size: 0.95rem; }
+    .day-title span { font-size: 0.8rem; color: var(--text-muted); margin-left: 8px; }
+    .chevron { color: var(--text-muted); transition: transform .25s; font-size: 0.9rem; }
+    .day-card.open .chevron { transform: rotate(180deg); }
+
+    .day-body { display: none; padding: 0 18px 18px; }
+    .day-card.open .day-body { display: block; }
+
+    /* Exercise table */
+    .ex-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    .ex-table th {
+      font-size: 0.75rem; color: var(--text-muted);
+      text-align: left; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .4px;
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .ex-table td { padding: 10px 10px; border-bottom: 1px solid rgba(255,255,255,.04); font-size: 0.88rem; }
+    .ex-table tr:last-child td { border-bottom: none; }
+    .ex-table tr:hover td { background: rgba(255,255,255,.02); }
+
+    .ex-name { font-weight: 700; }
+    .ex-alt {
+      font-size: 0.76rem; color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .ex-alt span { color: var(--yellow); }
+
+    .tag {
+      display: inline-block; padding: 2px 8px;
+      border-radius: 20px; font-size: 0.72rem; font-weight: 700;
+    }
+    .tag-bb  { background: rgba(232,93,4,.18); color: var(--primary); }
+    .tag-db  { background: rgba(34,197,94,.15); color: var(--green); }
+    .tag-bw  { background: rgba(59,130,246,.15); color: var(--blue); }
+
+    .sets-cell { font-weight: 700; color: var(--text); }
+    .weight-cell { font-weight: 700; color: var(--primary); }
+
+    .rest-day-msg {
+      color: var(--blue); font-size: 0.9rem; font-weight: 600;
+      padding: 8px 0;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    /* Summary box */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .summary-box {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      text-align: center;
+    }
+    .summary-box .val { font-size: 1.6rem; font-weight: 800; color: var(--primary); }
+    .summary-box .lbl { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+
+    /* Print / export */
+    .action-bar { display: flex; gap: 10px; margin-top: 24px; flex-wrap: wrap; }
+    .btn-sec {
+      padding: 10px 20px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: border-color .2s;
+    }
+    .btn-sec:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* progress fill */
+    .intensity-bar { display: flex; gap: 3px; align-items: center; margin-top: 4px; }
+    .intensity-bar span {
+      width: 10px; height: 10px; border-radius: 3px;
+      background: var(--surface3);
+      transition: background .3s;
+    }
+    .intensity-bar span.fill { background: var(--primary); }
+
+    @media (max-width: 600px) {
+      .card { padding: 18px; }
+      .ex-table th:nth-child(3),
+      .ex-table td:nth-child(3) { display: none; }
+      .pr-table td:nth-child(3) { display: none; }
+    }
+
+    @media print {
+      header, .steps, .card:not(.result-card), .action-bar, .plan-tabs { display: none !important; }
+      .day-card { page-break-inside: avoid; }
+      .day-body { display: block !important; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>💪 健身課表<span>規劃師</span></h1>
+  <p>根據你的程度與目標，自動生成專屬課表</p>
+</header>
+
+<div class="container">
+
+  <!-- Step indicator -->
+  <div class="steps" id="stepIndicator">
+    <div class="step-dot active" id="step1">
+      <div class="num">1</div><div>基本設定</div>
+      <div class="line"></div>
+    </div>
+    <div class="step-dot" id="step2">
+      <div class="num">2</div><div>個人PR</div>
+      <div class="line"></div>
+    </div>
+    <div class="step-dot" id="step3">
+      <div class="num">3</div><div>課表生成</div>
+    </div>
+  </div>
+
+  <!-- ── STEP 1: Basic settings ── -->
+  <div class="card" id="sectionBasic">
+    <div class="card-title"><div class="icon">⚙️</div>基本訓練設定</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>每週訓練天數</label>
+        <select id="daysPerWeek">
+          <option value="2">2 天</option>
+          <option value="3" selected>3 天</option>
+          <option value="4">4 天</option>
+          <option value="5">5 天</option>
+          <option value="6">6 天</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>每次訓練時長（分鐘）</label>
+        <select id="sessionDuration">
+          <option value="45">45 分鐘</option>
+          <option value="60" selected>60 分鐘</option>
+          <option value="75">75 分鐘</option>
+          <option value="90">90 分鐘</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>主要訓練目標</label>
+        <select id="goal">
+          <option value="strength">增強力量 (Strength)</option>
+          <option value="hypertrophy" selected>增加維度 (Hypertrophy)</option>
+          <option value="powerbuilding">力量＋維度 (Powerbuilding)</option>
+          <option value="endurance">肌耐力 (Endurance)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>訓練經驗</label>
+        <select id="level">
+          <option value="beginner">新手（< 1 年）</option>
+          <option value="intermediate" selected>中級（1–3 年）</option>
+          <option value="advanced">進階（3 年以上）</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── STEP 2: PR Input ── -->
+  <div class="card" id="sectionPR">
+    <div class="card-title"><div class="icon">🏆</div>個人最大重量（PR）</div>
+    <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:16px;">
+      輸入你做過的最大單次重量（1RM）或最近測試重量。<br>
+      啞鈴請填「單手」重量，系統會自動計算雙手總重。
+    </p>
+    <table class="pr-table">
+      <thead>
+        <tr>
+          <th>動作</th>
+          <th>重量（kg）</th>
+          <th>器械</th>
+        </tr>
+      </thead>
+      <tbody id="prTableBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Generate button -->
+  <button class="btn-primary" onclick="generatePlan()">🚀 生成我的課表</button>
+
+  <!-- ── STEP 3: Result ── -->
+  <div id="result">
+    <div class="card" style="margin-top:28px;">
+      <div class="card-title"><div class="icon">📊</div>訓練概覽</div>
+      <div class="summary-grid" id="summaryGrid"></div>
+    </div>
+
+    <div style="margin-bottom:16px;">
+      <div class="plan-tabs" id="planTabs"></div>
+    </div>
+
+    <div id="planContents"></div>
+
+    <div class="action-bar">
+      <button class="btn-sec" onclick="window.print()">🖨️ 列印課表</button>
+      <button class="btn-sec" onclick="resetForm()">🔄 重新規劃</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+//  DATA
+// ─────────────────────────────────────────────
+const LIFTS = [
+  { id:'squat',      name:'深蹲',     defaultBB:100, defaultDB:40, muscle:'腿 / 臀' },
+  { id:'bench',      name:'臥推',     defaultBB:80,  defaultDB:35, muscle:'胸 / 三頭' },
+  { id:'deadlift',   name:'硬舉',     defaultBB:120, defaultDB:50, muscle:'背 / 臀腿' },
+  { id:'ohp',        name:'肩推',     defaultBB:55,  defaultDB:24, muscle:'肩 / 三頭' },
+  { id:'row',        name:'划船',     defaultBB:70,  defaultDB:30, muscle:'背 / 二頭' },
+  { id:'rdl',        name:'羅馬尼亞硬舉',defaultBB:90,defaultDB:38,muscle:'後腿鏈' },
+  { id:'incline',    name:'上斜臥推', defaultBB:65,  defaultDB:28, muscle:'上胸' },
+  { id:'curl',       name:'彎舉',     defaultBB:40,  defaultDB:18, muscle:'二頭' },
+];
+
+// Training templates (exercises per muscle group)
+const EXERCISE_DB = {
+  // [main, alt1, alt2]
+  chest: [
+    { name:'槓鈴臥推', tag:'bb', id:'bench' },
+    { name:'上斜啞鈴臥推', tag:'db', id:'incline' },
+    { name:'伏地挺身（加重）', tag:'bw', id:null },
+  ],
+  upper_chest: [
+    { name:'上斜槓鈴臥推', tag:'bb', id:'incline' },
+    { name:'上斜啞鈴飛鳥', tag:'db', id:null },
+    { name:'繩索夾胸（高至低）', tag:'bw', id:null },
+  ],
+  back_compound: [
+    { name:'槓鈴俯身划船', tag:'bb', id:'row' },
+    { name:'啞鈴單臂划船', tag:'db', id:'row' },
+    { name:'引體向上（加重）', tag:'bw', id:null },
+  ],
+  back_lat: [
+    { name:'引體向上', tag:'bw', id:null },
+    { name:'滑輪下拉', tag:'bb', id:null },
+    { name:'啞鈴直臂下壓', tag:'db', id:null },
+  ],
+  deadlift: [
+    { name:'傳統硬舉', tag:'bb', id:'deadlift' },
+    { name:'羅馬尼亞硬舉（槓鈴）', tag:'bb', id:'rdl' },
+    { name:'啞鈴羅馬尼亞硬舉', tag:'db', id:'rdl' },
+  ],
+  squat: [
+    { name:'低槓深蹲', tag:'bb', id:'squat' },
+    { name:'高槓深蹲', tag:'bb', id:'squat' },
+    { name:'啞鈴杯式深蹲', tag:'db', id:'squat' },
+  ],
+  leg_posterior: [
+    { name:'羅馬尼亞硬舉', tag:'bb', id:'rdl' },
+    { name:'腿後彎舉（機器）', tag:'bb', id:null },
+    { name:'啞鈴蘇莫硬舉', tag:'db', id:'rdl' },
+  ],
+  leg_anterior: [
+    { name:'前蹲舉', tag:'bb', id:'squat' },
+    { name:'腿推機', tag:'bb', id:null },
+    { name:'啞鈴弓步蹲', tag:'db', id:'squat' },
+  ],
+  shoulder: [
+    { name:'槓鈴肩推（站姿）', tag:'bb', id:'ohp' },
+    { name:'啞鈴肩推（坐姿）', tag:'db', id:'ohp' },
+    { name:'阿諾德推舉', tag:'db', id:'ohp' },
+  ],
+  shoulder_lateral: [
+    { name:'啞鈴側平舉', tag:'db', id:null },
+    { name:'繩索側平舉', tag:'bb', id:null },
+    { name:'機器側平舉', tag:'bb', id:null },
+  ],
+  tricep: [
+    { name:'窄握臥推', tag:'bb', id:'bench' },
+    { name:'繩索下壓', tag:'bb', id:null },
+    { name:'啞鈴頭上三頭伸展', tag:'db', id:null },
+  ],
+  bicep: [
+    { name:'槓鈴彎舉', tag:'bb', id:'curl' },
+    { name:'啞鈴錘式彎舉', tag:'db', id:'curl' },
+    { name:'啞鈴交替彎舉', tag:'db', id:'curl' },
+  ],
+  core: [
+    { name:'棒式（進階變化）', tag:'bw', id:null },
+    { name:'腹輪', tag:'bw', id:null },
+    { name:'懸掛舉腿', tag:'bw', id:null },
+  ],
+  glute: [
+    { name:'臀推（槓鈴）', tag:'bb', id:'squat' },
+    { name:'啞鈴臀推', tag:'db', id:'squat' },
+    { name:'彈力帶蛤殼式', tag:'bw', id:null },
+  ],
+};
+
+// ─────────────────────────────────────────────
+//  GOAL CONFIGS
+// ─────────────────────────────────────────────
+const GOAL_CONFIG = {
+  strength: {
+    mainSets:5, mainReps:'3–5', mainIntensity:.85,
+    accSets:3,  accReps:'6–8',  accIntensity:.72,
+    label:'力量向', color:'#ef4444',
+  },
+  hypertrophy: {
+    mainSets:4, mainReps:'8–12', mainIntensity:.72,
+    accSets:3,  accReps:'12–15', accIntensity:.62,
+    label:'肌肥大', color:'#22c55e',
+  },
+  powerbuilding: {
+    mainSets:4, mainReps:'5–8', mainIntensity:.78,
+    accSets:3,  accReps:'8–12', accIntensity:.67,
+    label:'力量＋維度', color:'#e85d04',
+  },
+  endurance: {
+    mainSets:3, mainReps:'15–20', mainIntensity:.58,
+    accSets:3,  accReps:'20+',   accIntensity:.50,
+    label:'肌耐力', color:'#3b82f6',
+  },
+};
+
+// ─────────────────────────────────────────────
+//  SPLIT TEMPLATES  (index = muscle group key)
+// ─────────────────────────────────────────────
+const SPLITS = {
+  2: {
+    name: '全身訓練（2天）',
+    days: [
+      { label:'A 全身', muscles:[{g:'squat',isMain:true},{g:'bench',isMain:true},{g:'back_compound',isMain:true},{g:'shoulder',isMain:false},{g:'core',isMain:false}]},
+      { label:'B 全身', muscles:[{g:'deadlift',isMain:true},{g:'upper_chest',isMain:false},{g:'back_lat',isMain:false},{g:'shoulder_lateral',isMain:false},{g:'bicep',isMain:false}]},
+    ]
+  },
+  3: {
+    name: '推拉腿（PPL）',
+    days: [
+      { label:'推（胸肩三頭）', muscles:[{g:'chest',isMain:true},{g:'upper_chest',isMain:false},{g:'shoulder',isMain:false},{g:'shoulder_lateral',isMain:false},{g:'tricep',isMain:false}]},
+      { label:'拉（背二頭）',   muscles:[{g:'back_compound',isMain:true},{g:'back_lat',isMain:false},{g:'deadlift',isMain:false},{g:'bicep',isMain:false},{g:'core',isMain:false}]},
+      { label:'腿（深蹲主導）', muscles:[{g:'squat',isMain:true},{g:'leg_anterior',isMain:false},{g:'leg_posterior',isMain:false},{g:'glute',isMain:false}]},
+    ]
+  },
+  4: {
+    name: '上下肢分化（4天 Upper/Lower）',
+    days: [
+      { label:'上肢 A（力量）', muscles:[{g:'bench',isMain:true},{g:'back_compound',isMain:true},{g:'shoulder',isMain:false},{g:'tricep',isMain:false},{g:'bicep',isMain:false}]},
+      { label:'下肢 A（力量）', muscles:[{g:'squat',isMain:true},{g:'leg_posterior',isMain:false},{g:'glute',isMain:false},{g:'core',isMain:false}]},
+      { label:'上肢 B（維度）', muscles:[{g:'upper_chest',isMain:false},{g:'back_lat',isMain:false},{g:'shoulder_lateral',isMain:false},{g:'tricep',isMain:false},{g:'bicep',isMain:false}]},
+      { label:'下肢 B（維度）', muscles:[{g:'leg_anterior',isMain:false},{g:'deadlift',isMain:true},{g:'glute',isMain:false},{g:'core',isMain:false}]},
+    ]
+  },
+  5: {
+    name: '胸/背/腿/肩/手臂（5天）',
+    days: [
+      { label:'胸',   muscles:[{g:'chest',isMain:true},{g:'upper_chest',isMain:false},{g:'tricep',isMain:false}]},
+      { label:'背',   muscles:[{g:'back_compound',isMain:true},{g:'back_lat',isMain:false},{g:'deadlift',isMain:false},{g:'bicep',isMain:false}]},
+      { label:'腿',   muscles:[{g:'squat',isMain:true},{g:'leg_posterior',isMain:false},{g:'glute',isMain:false},{g:'core',isMain:false}]},
+      { label:'肩',   muscles:[{g:'shoulder',isMain:true},{g:'shoulder_lateral',isMain:false},{g:'upper_chest',isMain:false}]},
+      { label:'手臂', muscles:[{g:'bicep',isMain:true},{g:'tricep',isMain:true},{g:'core',isMain:false}]},
+    ]
+  },
+  6: {
+    name: '推拉腿 × 2（PPL×2）',
+    days: [
+      { label:'推 A', muscles:[{g:'chest',isMain:true},{g:'shoulder',isMain:false},{g:'tricep',isMain:false}]},
+      { label:'拉 A', muscles:[{g:'back_compound',isMain:true},{g:'back_lat',isMain:false},{g:'bicep',isMain:false}]},
+      { label:'腿 A', muscles:[{g:'squat',isMain:true},{g:'leg_posterior',isMain:false},{g:'glute',isMain:false}]},
+      { label:'推 B', muscles:[{g:'upper_chest',isMain:false},{g:'shoulder_lateral',isMain:false},{g:'tricep',isMain:false}]},
+      { label:'拉 B', muscles:[{g:'deadlift',isMain:true},{g:'back_lat',isMain:false},{g:'bicep',isMain:false},{g:'core',isMain:false}]},
+      { label:'腿 B', muscles:[{g:'leg_anterior',isMain:false},{g:'leg_posterior',isMain:false},{g:'glute',isMain:false},{g:'core',isMain:false}]},
+    ]
+  },
+};
+
+// ─────────────────────────────────────────────
+//  BUILD PR TABLE
+// ─────────────────────────────────────────────
+function buildPrTable() {
+  const tbody = document.getElementById('prTableBody');
+  tbody.innerHTML = '';
+  LIFTS.forEach(lift => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>
+        <div style="font-weight:700">${lift.name}</div>
+        <div style="font-size:.75rem;color:var(--text-muted)">${lift.muscle}</div>
+      </td>
+      <td>
+        <div class="pr-row">
+          <input type="number" id="pr_${lift.id}" min="0" step="2.5"
+            placeholder="0" style="width:90px" />
+          <span class="unit-badge">kg</span>
+        </div>
+        <div id="prNote_${lift.id}" class="note-badge" style="display:none"></div>
+      </td>
+      <td>
+        <div class="toggle-group">
+          <button class="toggle-btn active" data-lift="${lift.id}" data-type="bb" onclick="selectEquip(this)">槓鈴</button>
+          <button class="toggle-btn"        data-lift="${lift.id}" data-type="db" onclick="selectEquip(this)">啞鈴</button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+
+    // Live note update
+    document.getElementById(`pr_${lift.id}`).addEventListener('input', () => updatePrNote(lift.id));
+  });
+}
+
+function selectEquip(btn) {
+  const liftId = btn.dataset.lift;
+  btn.closest('.toggle-group').querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  updatePrNote(liftId);
+}
+
+function updatePrNote(liftId) {
+  const val = parseFloat(document.getElementById(`pr_${liftId}`).value) || 0;
+  const isDB = getEquip(liftId) === 'db';
+  const noteEl = document.getElementById(`prNote_${liftId}`);
+  if (val > 0 && isDB) {
+    noteEl.textContent = `兩手合計：${(val * 2).toFixed(1)} kg`;
+    noteEl.style.display = 'inline-block';
+  } else {
+    noteEl.style.display = 'none';
+  }
+}
+
+function getEquip(liftId) {
+  const btns = document.querySelectorAll(`[data-lift="${liftId}"]`);
+  for (const b of btns) if (b.classList.contains('active')) return b.dataset.type;
+  return 'bb';
+}
+
+function getPR(liftId) {
+  const val = parseFloat(document.getElementById(`pr_${liftId}`)?.value) || 0;
+  const equip = getEquip(liftId);
+  const lift = LIFTS.find(l => l.id === liftId);
+  if (!lift) return { weight: 0, equip };
+  const weight = val > 0 ? val : (equip === 'db' ? lift.defaultDB : lift.defaultBB);
+  // For dumbbell: total = single * 2, but we keep per-hand weight for display
+  return { weight, equip, total: equip === 'db' ? weight * 2 : weight };
+}
+
+// ─────────────────────────────────────────────
+//  WEIGHT CALCULATION
+// ─────────────────────────────────────────────
+function calcWeight(exEntry, isMain, goalKey) {
+  const gc = GOAL_CONFIG[goalKey];
+  const intensity = isMain ? gc.mainIntensity : gc.accIntensity;
+
+  if (!exEntry.id) return '自重/輕重量';
+
+  const pr = getPR(exEntry.id);
+  let raw = pr.weight * intensity;
+
+  // Round to nearest 2.5
+  raw = Math.round(raw / 2.5) * 2.5;
+  if (raw < 5) raw = 5;
+
+  if (pr.equip === 'db') {
+    return `${raw} kg × 2（啞鈴）`;
+  } else {
+    return `${raw} kg（槓鈴）`;
+  }
+}
+
+function getSetsReps(isMain, goalKey) {
+  const gc = GOAL_CONFIG[goalKey];
+  if (isMain) return `${gc.mainSets} × ${gc.mainReps}`;
+  return `${gc.accSets} × ${gc.accReps}`;
+}
+
+function getRestTime(isMain, goalKey) {
+  if (goalKey === 'strength') return isMain ? '3–5 min' : '2–3 min';
+  if (goalKey === 'hypertrophy') return isMain ? '2–3 min' : '60–90 s';
+  if (goalKey === 'powerbuilding') return isMain ? '3–4 min' : '2 min';
+  return isMain ? '60–90 s' : '45–60 s';
+}
+
+// ─────────────────────────────────────────────
+//  BUILD WEEK SCHEDULE  (weeks array of day arrays)
+// ─────────────────────────────────────────────
+function buildSchedule(days, totalWeeks) {
+  const week = [];
+  const WEEK_DAYS = ['週一','週二','週三','週四','週五','週六','週日'];
+  const split = SPLITS[days];
+
+  // Spread training days evenly
+  const slots = spreadDays(days);
+
+  const schedule = [];
+  for (let w = 0; w < totalWeeks; w++) {
+    const weekDays = [];
+    for (let d = 0; d < 7; d++) {
+      const trainIdx = slots[d];
+      if (trainIdx === null) {
+        weekDays.push({ dayName: WEEK_DAYS[d], isRest: true });
+      } else {
+        weekDays.push({ dayName: WEEK_DAYS[d], isRest: false, session: split.days[trainIdx % split.days.length] });
+      }
+    }
+    schedule.push(weekDays);
+  }
+  return { schedule, splitName: split.name };
+}
+
+function spreadDays(n) {
+  // returns array[7] of either null or trainIdx
+  const slots = new Array(7).fill(null);
+  const positions = {
+    2: [0, 3],
+    3: [0, 2, 4],
+    4: [0, 1, 3, 4],
+    5: [0, 1, 2, 4, 5],
+    6: [0, 1, 2, 3, 4, 5],
+  };
+  const pos = positions[n] || [0, 2, 4];
+  pos.forEach((p, i) => { slots[p] = i; });
+  return slots;
+}
+
+// ─────────────────────────────────────────────
+//  RENDER
+// ─────────────────────────────────────────────
+function renderExercises(muscles, goalKey) {
+  const rows = [];
+  muscles.forEach(({ g, isMain }) => {
+    const exList = EXERCISE_DB[g];
+    if (!exList) return;
+    const main = exList[0];
+    const alts = exList.slice(1, 3);
+    const setsReps = getSetsReps(isMain, goalKey);
+    const weight = calcWeight(main, isMain, goalKey);
+    const rest = getRestTime(isMain, goalKey);
+    const tagClass = `tag-${main.tag}`;
+    const tagLabel = main.tag === 'bb' ? '槓鈴' : main.tag === 'db' ? '啞鈴' : '自重';
+    const altText = alts.map(a => `<span>▸</span> ${a.name}`).join(' &nbsp;｜&nbsp; ');
+
+    rows.push(`
+      <tr>
+        <td>
+          <div class="ex-name">${main.name}</div>
+          <div class="ex-alt">替代：${altText}</div>
+        </td>
+        <td><span class="tag ${tagClass}">${tagLabel}</span></td>
+        <td class="sets-cell">${setsReps}</td>
+        <td class="weight-cell">${weight}</td>
+        <td style="font-size:.8rem;color:var(--text-muted)">${rest}</td>
+      </tr>
+    `);
+  });
+  return rows.join('');
+}
+
+function renderWeek(weekDays, weekNum, goalKey) {
+  let html = `<div class="week-section">`;
+  if (weekNum > 0) html += `<div class="week-title">第 ${weekNum} 週</div>`;
+
+  weekDays.forEach((day, i) => {
+    const open = i === 0 && weekNum <= 1 ? 'open' : '';
+    if (day.isRest) {
+      html += `
+        <div class="day-card">
+          <div class="day-header" onclick="toggleDay(this)">
+            <div class="day-badge rest">休</div>
+            <div class="day-title"><strong>${day.dayName}</strong><span>休息日</span></div>
+            <div class="chevron">▼</div>
+          </div>
+          <div class="day-body">
+            <div class="rest-day-msg">🌙 休息日 — 可做輕度有氧、伸展或瑜珈恢復</div>
+          </div>
+        </div>`;
+    } else {
+      const session = day.session;
+      html += `
+        <div class="day-card ${open}">
+          <div class="day-header" onclick="toggleDay(this)">
+            <div class="day-badge train">練</div>
+            <div class="day-title">
+              <strong>${day.dayName}</strong>
+              <span>${session.label}</span>
+            </div>
+            <div class="chevron">▼</div>
+          </div>
+          <div class="day-body">
+            <table class="ex-table">
+              <thead>
+                <tr>
+                  <th>動作</th>
+                  <th>器械</th>
+                  <th>組×次</th>
+                  <th>建議重量</th>
+                  <th>組間休息</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${renderExercises(session.muscles, goalKey)}
+              </tbody>
+            </table>
+          </div>
+        </div>`;
+    }
+  });
+
+  html += `</div>`;
+  return html;
+}
+
+// ─────────────────────────────────────────────
+//  GENERATE PLAN
+// ─────────────────────────────────────────────
+function generatePlan() {
+  const days = parseInt(document.getElementById('daysPerWeek').value);
+  const duration = parseInt(document.getElementById('sessionDuration').value);
+  const goal = document.getElementById('goal').value;
+  const level = document.getElementById('level').value;
+  const gc = GOAL_CONFIG[goal];
+
+  // Update steps
+  document.getElementById('step1').classList.add('done');
+  document.getElementById('step2').classList.add('done');
+  document.getElementById('step3').classList.add('active');
+
+  // Summary
+  document.getElementById('summaryGrid').innerHTML = `
+    <div class="summary-box"><div class="val">${days}</div><div class="lbl">每週訓練天數</div></div>
+    <div class="summary-box"><div class="val">${duration}'</div><div class="lbl">每次訓練時長</div></div>
+    <div class="summary-box" style="--primary:${gc.color}"><div class="val">${gc.label}</div><div class="lbl">訓練目標</div></div>
+    <div class="summary-box"><div class="val">${gc.mainReps}</div><div class="lbl">主項次數範圍</div></div>
+  `;
+
+  // Plan variants: 1w / 2w / 3w / 4w
+  const PLANS = [
+    { key:'1w', label:'1 週', weeks:1 },
+    { key:'2w', label:'2 週', weeks:2 },
+    { key:'3w', label:'3 週', weeks:3 },
+    { key:'4w', label:'4 週', weeks:4 },
+  ];
+
+  // Tabs
+  document.getElementById('planTabs').innerHTML = PLANS.map((p, i) =>
+    `<button class="plan-tab${i===0?' active':''}" onclick="switchPlan('${p.key}',this)">${p.label}</button>`
+  ).join('');
+
+  // Contents
+  const contentsEl = document.getElementById('planContents');
+  contentsEl.innerHTML = '';
+
+  PLANS.forEach((p, pi) => {
+    const { schedule, splitName } = buildSchedule(days, p.weeks);
+    let html = `<div class="plan-content${pi===0?' active':''}" id="plan_${p.key}">`;
+    html += `<p style="font-size:.85rem;color:var(--text-muted);margin-bottom:16px">
+      採用 <strong style="color:var(--text)">${splitName}</strong>，
+      共 <strong style="color:var(--primary)">${days * p.weeks}</strong> 次訓練
+    </p>`;
+    schedule.forEach((weekDays, wi) => {
+      html += renderWeek(weekDays, p.weeks > 1 ? wi + 1 : 0, goal);
+    });
+    html += `</div>`;
+    contentsEl.insertAdjacentHTML('beforeend', html);
+  });
+
+  const resultEl = document.getElementById('result');
+  resultEl.classList.add('visible');
+  resultEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function switchPlan(key, btn) {
+  document.querySelectorAll('.plan-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.plan-content').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(`plan_${key}`).classList.add('active');
+}
+
+function toggleDay(header) {
+  header.closest('.day-card').classList.toggle('open');
+}
+
+function resetForm() {
+  document.getElementById('result').classList.remove('visible');
+  document.getElementById('step1').classList.remove('done');
+  document.getElementById('step2').classList.remove('done');
+  document.getElementById('step3').classList.remove('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ─────────────────────────────────────────────
+//  INIT
+// ─────────────────────────────────────────────
+buildPrTable();
+</script>
+</body>
+</html>
